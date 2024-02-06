@@ -6,6 +6,7 @@ import { Organizaion } from '@/types/Organization';
 
 const finalRes: Ref<Organizaion[]> = ref();
 const selectedNode: Ref<Organizaion> = ref(null);
+const chatReference: Ref<OrgChart> = ref();
 
 async function getData() {
   const res = await fetch("http://localhost:3000/");
@@ -16,33 +17,47 @@ onMounted(() => {
   getData();
 });
 
-function onCardSelection(chatReference: OrgChart, data: Organizaion): any {
-  const attrs = chatReference.getChartState();
+function onNodeSelection(data: Organizaion): any {
+  const attrs = chatReference.value.getChartState();
+  
   const nodes = attrs.allNodes.map((d: any) => {
     if (attrs.nodeId(d.data) === data.name) {
       d.data._highlighted = true;
       selectedNode.value = data;
+    } else {
+      d.data._highlighted = false;
     }
     return d;
   })
-  chatReference.data(nodes);
-  chatReference.update(attrs);
+  chatReference.value.data(nodes);
+  chatReference.value.update(attrs);
+}
+
+function closeNode(): any {
+  selectedNode.value = null;
+  const attrs = chatReference.value.getChartState();
+  const nodes = attrs.allNodes.map((d: any) => {
+    d.data._highlighted = false
+    return d;
+  })
+  chatReference.value.data(nodes);
+  chatReference.value.update(attrs);
 }
 
 watch(finalRes, () => {
 
-  const chatReference = new OrgChart()
+  chatReference.value = new OrgChart()
     .initialExpandLevel(3)
     .svgWidth(500)
     .nodeId((dataItem: Organizaion) => dataItem.name)
     .parentNodeId((dataItem: Organizaion) => dataItem.parent)
-    .nodeWidth((node: any) => 30)
-    .nodeHeight((node: any) => 30)
-    .nodeContent((node: any) => {
+    .nodeWidth((dataItem: any) => 60)
+    .nodeHeight((dataItem: any) => 60)
+    .nodeContent((dataItem: any) => {
       return `<div 
-        style="background-color:aqua;width:${node.width}px;height:${node.height}px"
+        style="border:1px solid #CCC;width:${dataItem.width}px;height:${dataItem.height}px;border-radius: 5px;text-align:center"
       > 
-           ${node.data.name}
+           <h4>${dataItem.data.name}</h4>
        </div>`;
     })
     .container('.chart-container')
@@ -50,39 +65,48 @@ watch(finalRes, () => {
     .data(finalRes.value)
     .setActiveNodeCentered(false)
     .compact(false)
-    .onNodeClick((dataItem: { data: Organizaion }) => onCardSelection(chatReference, dataItem.data))
+    .onNodeClick((dataItem: { data: Organizaion }) => onNodeSelection(dataItem.data))
     .render();
 
 })
 </script>
 
 <template>
-  <div id="overlay">
-    <div v-if="selectedNode">
-      {{ finalRes }}</div>
+  <div id="flex-container">
+    <div class="chart-container" />
+    <div class="details-container" v-if="selectedNode">
+      <div @click="closeNode" class="alertClose">&times;</div>
+      <div id="details">
+        <h4>{{ selectedNode.name }}</h4>
+        <p>{{ selectedNode.description }}</p>
+      </div>
+    </div>
+    <div></div>
   </div>
-  <div class="chart-container" />
 </template>
 
 <style>
-#overlay {
-  position: fixed;
-  /* Sit on top of the page content */
-  display: block;
-  /* Hidden by default */
-  width: 100%;
-  /* Full width (cover the whole page) */
-  height: 100%;
-  /* Full height (cover the whole page) */
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  /* Black background with opacity */
-  z-index: 2;
-  /* Specify a stack order in case you're using a different order for other elements */
-  cursor: pointer;
-  /* Add a pointer on hover */
+#flex-container{
+  display: flex;
+  flex-wrap: wrap;
+}
+.details-container{
+  margin: auto;
+  position:relative;
+}
+#details{
+  padding: 10px;
+  background-color: beige;
+}
+.alertClose {
+ cursor: pointer;
+ position:absolute;
+ top:-18px;
+ right:-5px;
+ padding: 2px;
+ font-size: 18px;
+ background-color: black;
+ color: #FFF;
+ border-radius: 50%;
 }
 </style>
